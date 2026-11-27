@@ -11,7 +11,7 @@ npm ci
 npm run build
 npm test
 npm pack
-dsh plugin --profile web add ./dsh-prism-dsh-triggers-0.1.0.tgz
+dsh plugin --profile web add ./dsh-prism-dsh-triggers-0.2.0.tgz
 ```
 
 插件把事件编写工作区固定在当前配置档的 `data/dsh-prism/workspace/events/`，将订阅、Provider 修订、实例状态和待投递事件保存在相邻的 `data/dsh-prism/triggers.sqlite`。
