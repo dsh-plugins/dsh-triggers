@@ -14,8 +14,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6.4.0
@@ -38,31 +41,14 @@ jobs:
             if (pkg.gitHead !== process.env.GITHUB_SHA) process.exit(1)
             require("node:fs").accessSync(pkg.dsh.bundle.patch)
           '
-      - uses: actions/upload-artifact@v6
-        with:
-          name: npm-package
-          path: ${{ runner.temp }}/release.tgz
-          if-no-files-found: error
-
-  publish:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v7
-        with:
-          name: npm-package
-      - uses: actions/setup-node@v6.4.0
-        with:
-          node-version: '24'
-          package-manager-cache: false
       - name: Verify the release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: ${{ runner.temp }}/npm-package/package
         run: |
-          tar -xOf release.tgz package/package.json > package.json
           test "$GITHUB_REF_NAME" = "v$(node -p 'require("./package.json").version')"
       - name: Publish the tagged package
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: ${{ runner.temp }}/npm-package/package
         run: |
           registry=https://registry.npmjs.org
           spec=$(node -p 'const pkg = require("./package.json"); pkg.name + "@" + pkg.version')
@@ -82,4 +68,4 @@ jobs:
             cat "$RUNNER_TEMP/npm-view.err" >&2
             exit 1
           fi
-          npm publish release.tgz --access public --registry "$registry"
+          npm publish "$RUNNER_TEMP/release.tgz" --access public --registry "$registry"
