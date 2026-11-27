@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Gatilhos de eventos do Prism",
+    "description": "Envia tarefas agendadas, sinais de sensores externos e eventos personalizados em TypeScript para as conversas do Prism."
+  }
+}

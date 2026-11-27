@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Déclencheurs d’événements Prism",
+    "description": "Transmet les tâches planifiées, les signaux de capteurs externes et les événements TypeScript personnalisés aux conversations Prism."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Disparadores de eventos de Prism",
+    "description": "Envía tareas programadas, señales de sensores externos y eventos personalizados de TypeScript a las conversaciones de Prism."
+  }
+}

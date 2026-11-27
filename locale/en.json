@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Prism Event Triggers",
+    "description": "Deliver scheduled tasks, external sensor signals, and custom TypeScript events to Prism conversations."
+  }
+}

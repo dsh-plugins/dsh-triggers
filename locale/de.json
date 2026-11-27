@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Prism-Ereignisauslöser",
+    "description": "Leitet geplante Aufgaben, externe Sensorsignale und benutzerdefinierte TypeScript-Ereignisse an Prism-Unterhaltungen weiter."
+  }
+}
