@@ -111,3 +111,27 @@ test('invalid or runaway definitions cannot displace the active Provider revisio
   assert.equal(result.providerId, request.providerId)
   assert.ok(result.nextAt)
 })
+
+test('revoked authorization prevents committing a validated provider or subscription', async t => {
+  const clock = await fixture(t)
+  const triggers = clock.start()
+  let allowed = true
+  const authorize = () => {
+    if (!allowed) { throw new Error('授权已撤销') }
+  }
+  const rejected = triggers.publish({providerId: 'revoked', source: counter}, authorize)
+  allowed = false
+  await assert.rejects(rejected, /授权已撤销/)
+  await assert.rejects(triggers.add({providerId: 'revoked', params: 1}, route), /不存在/)
+
+  allowed = true
+  const request = {providerId: 'counter', params: 1}
+  await triggers.publish({providerId: 'counter', source: counter}, authorize)
+  const active = await triggers.add(request, route, authorize)
+  const pending = triggers.add(request, route, authorize)
+  allowed = false
+  await assert.rejects(pending, /授权已撤销/)
+  await assert.rejects(triggers.remove(active.id, route, authorize), /授权已撤销/)
+  allowed = true
+  assert.equal(await triggers.remove(active.id, route, authorize), true)
+})

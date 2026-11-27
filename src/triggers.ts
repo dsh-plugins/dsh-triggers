@@ -60,7 +60,7 @@ export class TriggerSubscriptions implements TriggerPort {
     }
   }
 
-  async publish(request: {providerId: string; source: string}): Promise<{providerId: string; revision: string}> {
+  async publish(request: {providerId: string; source: string}, authorize?: () => void): Promise<{providerId: string; revision: string}> {
     this.ensureOpen()
     const id = providerId(request.providerId)
     const {source} = request
@@ -71,11 +71,12 @@ export class TriggerSubscriptions implements TriggerPort {
     await this.processes.run({source, operation: 'inspect'})
     this.ensureOpen()
     const revision = createHash('sha256').update(source).digest('hex')
+    authorize?.()
     this.store.publish(id, revision, source)
     return {providerId: id, revision}
   }
 
-  async add(request: {providerId: string; params?: unknown}, target: TriggerRoute): Promise<{
+  async add(request: {providerId: string; params?: unknown}, target: TriggerRoute, authorize?: () => void): Promise<{
     id: string; providerId: string; nextAt: string | null
   }> {
     this.ensureOpen()
@@ -106,6 +107,7 @@ export class TriggerSubscriptions implements TriggerPort {
     }
     this.ensureOpen()
     const id = randomUUID()
+    authorize?.()
     this.store.add({
       id, provider, revision, principal: route.principal, reply_to: route.replyTo,
       params: JSON.stringify(params), state: JSON.stringify(state), next_at: nextAt,
@@ -114,9 +116,12 @@ export class TriggerSubscriptions implements TriggerPort {
     return {id, providerId: provider, nextAt: nextAt === null ? null : iso(nextAt)}
   }
 
-  async remove(id: string, target: TriggerRoute): Promise<boolean> {
+  async remove(id: string, target: TriggerRoute, authorize?: () => void): Promise<boolean> {
     this.ensureOpen()
-    const removed = this.store.remove(text(id, 128, '订阅 ID'), authenticatedRoute(target))
+    const subscriptionId = text(id, 128, '订阅 ID')
+    const route = authenticatedRoute(target)
+    authorize?.()
+    const removed = this.store.remove(subscriptionId, route)
     this.wake()
     return removed
   }

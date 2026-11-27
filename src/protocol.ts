@@ -35,9 +35,9 @@ export interface TriggerProvider {
 export interface TriggerPort {
   readonly workspace: string
   setSink(sink: (event: TriggerEvent) => Promise<unknown>): () => void
-  add(request: {providerId: string; params?: unknown}, route: TriggerRoute): Promise<{
+  add(request: {providerId: string; params?: unknown}, route: TriggerRoute, authorize?: () => void): Promise<{
     id: string; providerId: string; nextAt: string | null
   }>
-  remove(id: string, route: TriggerRoute): Promise<boolean>
-  publish(request: {providerId: string; source: string}): Promise<{providerId: string; revision: string}>
+  remove(id: string, route: TriggerRoute, authorize?: () => void): Promise<boolean>
+  publish(request: {providerId: string; source: string}, authorize?: () => void): Promise<{providerId: string; revision: string}>
 }
