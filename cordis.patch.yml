@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-triggers
+      name: '@dsh-prism/dsh-triggers'

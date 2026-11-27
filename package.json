@@ -1,0 +1,46 @@
+{
+  "name": "@dsh-prism/dsh-triggers",
+  "description": "Schedule Prism conversation events and mount isolated TypeScript event providers.",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./protocol": {
+      "types": "./dist/protocol.d.ts",
+      "import": "./dist/protocol.js"
+    },
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "dist/",
+    "!dist/*.tsbuildinfo",
+    "cordis.patch.yml"
+  ],
+  "engines": {
+    "node": ">=24.9.0",
+    "dsh": "0.2.3-alpha.2"
+  },
+  "publishConfig": { "access": "public" },
+  "peerDependencies": { "@deepseek-ai/cordis": "4.2.0-alpha.1" },
+  "dependencies": {
+    "croner": "11.0.1",
+    "quickjs-emscripten": "0.32.0",
+    "typescript": "6.0.3"
+  },
+  "devDependencies": { "@types/node": "24.10.1" },
+  "scripts": {
+    "build": "tsc -b tsconfig.release.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dsh-plugins/dsh-triggers.git"
+  },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}
