@@ -1,6 +1,6 @@
 # dsh-triggers
 
-棱镜事件触发插件将 Cron 和动态 TypeScript Provider 的信号投递给创建订阅的 L1。编排器仍负责校验投递目标是否有效。
+棱镜事件触发插件将 Cron、MSP 和动态 TypeScript Provider 的信号投递给创建订阅的 L1。编排器负责校验投递目标是否有效。
 
 ## 安装
 
@@ -32,6 +32,36 @@ dsh plugin --profile web add ./dsh-prism-dsh-triggers-0.1.0.tgz
 ```
 
 重启时跳过停机期间还未记录的 Cron 时间点。已经记录的事件会沿用原来的事件 ID 补投。删除订阅会取消未来排期和尚未提交给编排器的事件。
+
+## 内置 MSP
+
+在当前配置档的 `cordis.patch.yml` 中为 `dsh-triggers` 填写 `msp`，即可启用单个 MSP 桥。`nodesDir` 是和 MSP 节点共用的绝对路径。`allowedNodes` 填写允许订阅的节点 ID，可通过 `nodeId` 为棱镜桥指定独立 ID。
+
+```yaml
+- id: dsh-triggers
+  config:
+    msp:
+      nodesDir: C:/msp/nodes
+      allowedNodes: [room_sensor]
+```
+
+桥的侦听地址是 `127.0.0.1`。出站时按允许节点的发现声明重试连接，默认接受 `127.0.0.1` 和 `::1`。使用局域网节点时，在 `allowedHosts` 追加声明中的具体 IP。MSP 节点名用于过滤，部署时应为共享目录设置合适的访问权限。信号以不受信任的 `external.trigger` 数据投递。
+
+```json
+{
+  "providerId": "msp",
+  "params": {
+    "nodeId": "room_sensor",
+    "path": "sensor.temperature.**",
+    "cooldownMs": 30000,
+    "changeOnly": true
+  }
+}
+```
+
+`path` 支持精确路径、末尾 `.*` 匹配一层和末尾 `.**` 匹配零层或多层。单独 `*` 匹配一个路径段，`**` 匹配任意有效路径。冷却时间按订阅计算，默认 30 秒，设置 `0` 关闭。`changeOnly` 默认关闭。开启后按实际信号路径比较上次入队值，忽略 JSON 对象键的顺序，每个订阅最多记住最近入队的 64 条路径。每个订阅最多保留 32 条待投递信号，队列达到上限时丢弃新信号。
+
+断线时自动重连。MSP 停止期间未接收的信号不会补发，已入队事件会在重启后用原 ID 继续投递。关闭 MSP 桥或移除节点允许项会暂停相应事件的投递。删除订阅会清理其待投递事件。
 
 ## TypeScript Provider
 

@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { cronParams, nextCron } from './cron.js'
+import { MspBridge, mspConfig, mspParams } from './msp.js'
+import type { MspConfig } from './msp.js'
 import type { JsonValue, TriggerEvent, TriggerPort, TriggerRoute } from './protocol.js'
 import { ProviderProcesses } from './sandbox.js'
 import { TriggerStore } from './store.js'
@@ -35,6 +37,8 @@ export class TriggerSubscriptions implements TriggerPort {
   private readonly processes = new ProviderProcesses()
   private readonly shutdown = new AbortController()
   private readonly startedAt: number
+  private readonly msp?: MspBridge
+  private readonly allowedNodes: readonly string[]
   private timer?: NodeJS.Timeout
   private work?: Promise<void>
   private closing?: Promise<void>
@@ -45,9 +49,17 @@ export class TriggerSubscriptions implements TriggerPort {
     storage: string,
     private readonly report: (message: string) => void,
     private readonly now = Date.now,
+    msp?: MspConfig,
   ) {
+    const config = msp === undefined ? undefined : mspConfig(msp, workspace)
+    this.allowedNodes = config?.allowedNodes ?? []
     this.store = new TriggerStore(storage)
     this.startedAt = this.now()
+    if (config) {
+      this.msp = new MspBridge(config, payload => {
+        if (!this.shutdown.signal.aborted && this.store.recordMsp(payload, this.now())) { this.wake() }
+      }, this.report)
+    }
     this.wake()
   }
 
@@ -64,7 +76,7 @@ export class TriggerSubscriptions implements TriggerPort {
     this.ensureOpen()
     const id = providerId(request.providerId)
     const {source} = request
-    if (id === 'cron') { throw new Error('内置 Cron Provider 不接受替换') }
+    if (id === 'cron' || id === 'msp') { throw new Error('内置 Provider 不接受替换') }
     if (typeof source !== 'string' || !source.trim() || Buffer.byteLength(source) > maxSourceBytes) {
       throw new Error('Provider 源码须为不超过 64 KiB 的 TypeScript')
     }
@@ -92,6 +104,10 @@ export class TriggerSubscriptions implements TriggerPort {
       nextAt = nextCron(cron, now)
       if (nextAt === null) { throw new Error('Cron 没有未来的执行时间') }
       params = cron
+    } else if (provider === 'msp') {
+      if (!this.msp) { throw new Error('当前配置档未启用 MSP 发现桥') }
+      params = json(mspParams(request.params, this.allowedNodes))
+      nextAt = null
     } else {
       const definition = this.store.active(provider)
       if (!definition) { throw new Error('Provider 不存在') }
@@ -131,7 +147,7 @@ export class TriggerSubscriptions implements TriggerPort {
     this.shutdown.abort(new Error('事件触发器已停止'))
     clearTimeout(this.timer)
     this.sink = undefined
-    this.closing = Promise.allSettled([this.processes.close(), this.work]).then(() => this.store.close())
+    this.closing = Promise.allSettled([this.processes.close(), this.msp?.close(), this.work]).then(() => this.store.close())
     return this.closing
   }
 
@@ -147,7 +163,7 @@ export class TriggerSubscriptions implements TriggerPort {
       if (this.shutdown.signal.aborted) { return }
       let delay = maxWakeMs
       try {
-        const next = this.store.nextWake(!!this.sink)
+        const next = this.store.nextWake(!!this.sink, this.allowedNodes)
         if (next !== undefined) { delay = Math.max(0, Math.min(maxWakeMs, next - this.now())) }
       } catch {
         this.report('读取下一次事件执行时间失败')
@@ -200,7 +216,7 @@ export class TriggerSubscriptions implements TriggerPort {
     for (let count = 0; count < 16 && !this.shutdown.signal.aborted; count++) {
       const sink = this.sink
       if (!sink) { return }
-      const claimed = this.store.claim(this.now())
+      const claimed = this.store.claim(this.now(), this.allowedNodes)
       if (!claimed) { return }
       const {event, attempts, lease} = claimed
       try {

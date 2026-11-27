@@ -2,9 +2,16 @@ import type { Context } from '@deepseek-ai/cordis'
 import { mkdir, realpath } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { TriggerSubscriptions } from './triggers.js'
+import type { MspConfig } from './msp.js'
 import type { TriggerPort } from './protocol.js'
 
 export type { JsonValue, TriggerEvent, TriggerPort, TriggerProvider, TriggerRoute, TriggerSchedule } from './protocol.js'
+export type { MspConfig } from './msp.js'
+
+/** 可选的 MSP 连接配置。 */
+export interface Config {
+  msp?: MspConfig
+}
 
 export const name = '@dsh-prism/dsh-triggers'
 export const inject = ['profileContext']
@@ -15,7 +22,7 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-export async function apply(ctx: Context): Promise<() => Promise<void>> {
+export async function apply(ctx: Context, config: Config = {}): Promise<() => Promise<void>> {
   const profile = ctx.get('profileContext') as {dir: string}
   const parent = await realpath(profile.dir)
   let directory = parent
@@ -28,6 +35,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const triggers = new TriggerSubscriptions(
     directory, join(parent, 'data', 'dsh-prism', 'triggers.sqlite'),
     message => ctx.logger.warn(message),
+    Date.now, config.msp,
   )
   try {
     ctx.provide('prismTriggers', triggers)

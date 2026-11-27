@@ -11,6 +11,7 @@ export interface TriggerRoute {
 export interface TriggerEvent {
   eventId: string
   source: string
+  kind?: 'external.trigger'
   occurredAt: string
   payload: JsonValue
   route: TriggerRoute
